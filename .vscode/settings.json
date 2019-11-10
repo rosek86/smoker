@@ -1,0 +1,10 @@
+{
+  "terminal.integrated.env.osx": {
+    "PATH": "/Users/krzysiek/.platformio/penv/bin:/Users/krzysiek/.platformio/penv:/usr/local/opt/openvpn/sbin:/usr/local/opt/openssl/bin:/usr/local/opt/sqlite/bin:/Users/Shared/gcc-arm/bin:/Users/krzysiek/Documents/Tools/checker-279/bin:/Users/krzysiek/anaconda/bin:/Users/krzysiek/Library/Python/3.7/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:/opt/X11/bin:/Applications/Wireshark.app/Contents/MacOS:/Applications/microchip/xc32/v1.44/bin:/Applications/microchip/xc16/v1.31/bin",
+    "PLATFORMIO_CALLER": "vscode"
+  },
+  "files.associations": {
+    ".screenrc": "bat",
+    "array": "cpp"
+  }
+}

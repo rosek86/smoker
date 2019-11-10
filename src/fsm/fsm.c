@@ -1,0 +1,95 @@
+#include "fsm.h"
+#include "fsm_event.h"
+#include "fsm_state.h"
+
+#include <string.h>
+#include <stdbool.h>
+
+typedef enum {
+  FSM_ACTION_START,
+  FSM_ACTION_STOP,
+  FSM_ACTION_EDIT_STEPS,
+  FSM_ACTION_UPDATE_EDIT_STEPS,
+  FSM_ACTION_START_MENU,
+  FSM_ACTION_UPDATE_START_MENU,
+  FSM_ACTION_VIEW,
+  FSM_ACTION_UPDATE_VIEW,
+  FSM_ACTION_MAIN_MENU,
+  FSM_ACTION_UPDATE_MAIN_MENU,
+  FSM_ACTION_PROGRESS,
+  FSM_ACTION_UPDATE_PROGRESS,
+  FSM_ACTION_EDIT_STEP,
+  FSM_ACTION_UPDATE_EDIT_STEP,
+  FSM_ACTION_EDIT_TIME,
+  FSM_ACTION_UPDATE_EDIT_TIME,
+  FSM_ACTION_EDIT_TEMP,
+  FSM_ACTION_UPDATE_EDIT_TEMP,
+  FSM_ACTION_EDIT_SMOKE,
+  FSM_ACTION_UPDATE_EDIT_SMOKE,
+  FSM_ACTION_EDIT_SET_TIME,
+  FSM_ACTION_EDIT_SET_TEMP,
+  FSM_ACTION_EDIT_SET_SMOKE,
+  FSM_ACTION_EDIT_NEXT_STEP,
+  FSM_ACTION_COUNT
+} actions_t;
+
+typedef struct {
+  fsm_state_t from_state;
+  fsm_event_t event;
+  fsm_state_t to_state;
+  actions_t   action;
+} transition_t;
+
+static transition_t transitions[] = {
+  { FSM_STATE_START_MENU,     FSM_EVT_ENCODER,     FSM_STATE_START_MENU,    FSM_ACTION_UPDATE_START_MENU  },
+  { FSM_STATE_START_MENU,     FSM_EVT_CLICK_START, FSM_STATE_RUNNING,       FSM_ACTION_START              },
+  { FSM_STATE_START_MENU,     FSM_EVT_CLICK_VIEW,  FSM_STATE_VIEW_CONFIG_1, FSM_ACTION_VIEW               },
+  { FSM_STATE_START_MENU,     FSM_EVT_CLICK_EDIT,  FSM_STATE_EDIT_STEPS,    FSM_ACTION_EDIT_STEPS         },
+  { FSM_STATE_VIEW_CONFIG_1,  FSM_EVT_ENCODER,     FSM_STATE_VIEW_CONFIG_1, FSM_ACTION_UPDATE_VIEW        },
+  { FSM_STATE_VIEW_CONFIG_1,  FSM_EVT_CLICK_EXIT,  FSM_STATE_START_MENU,    FSM_ACTION_START_MENU         },
+  { FSM_STATE_EDIT_STEPS,     FSM_EVT_ENCODER,     FSM_STATE_EDIT_STEPS,    FSM_ACTION_UPDATE_EDIT_STEPS  },
+  { FSM_STATE_EDIT_STEPS,     FSM_EVT_CLICK,       FSM_STATE_EDIT_STEP,     FSM_ACTION_EDIT_STEP          },
+  { FSM_STATE_EDIT_STEP,      FSM_EVT_ENCODER,     FSM_STATE_EDIT_STEP,     FSM_ACTION_UPDATE_EDIT_STEP   },
+  { FSM_STATE_EDIT_STEP,      FSM_EVT_CLICK_NEXT,  FSM_STATE_EDIT_STEP,     FSM_ACTION_EDIT_NEXT_STEP     },
+  { FSM_STATE_EDIT_STEP,      FSM_EVT_CLICK_EXIT,  FSM_STATE_START_MENU,    FSM_ACTION_START_MENU         },
+  { FSM_STATE_RUNNING,        FSM_EVT_TIMER,       FSM_STATE_RUNNING,       FSM_ACTION_UPDATE_PROGRESS    },
+  { FSM_STATE_RUNNING,        FSM_EVT_CLICK,       FSM_STATE_MAIN_MENU,     FSM_ACTION_MAIN_MENU          },
+  { FSM_STATE_MAIN_MENU,      FSM_EVT_ENCODER,     FSM_STATE_MAIN_MENU,     FSM_ACTION_UPDATE_MAIN_MENU   },
+  { FSM_STATE_MAIN_MENU,      FSM_EVT_CLICK_EXIT,  FSM_STATE_RUNNING,       FSM_ACTION_PROGRESS           },
+  { FSM_STATE_MAIN_MENU,      FSM_EVT_CLICK_STOP,  FSM_STATE_START_MENU,    FSM_ACTION_STOP               },
+  { FSM_STATE_MAIN_MENU,      FSM_EVT_CLICK_VIEW,  FSM_STATE_VIEW_CONFIG_2, FSM_ACTION_VIEW               },
+  { FSM_STATE_VIEW_CONFIG_2,  FSM_EVT_ENCODER,     FSM_STATE_VIEW_CONFIG_2, FSM_ACTION_UPDATE_VIEW        },
+  { FSM_STATE_VIEW_CONFIG_2,  FSM_EVT_CLICK_EXIT,  FSM_STATE_MAIN_MENU,     FSM_ACTION_MAIN_MENU          },
+  { FSM_STATE_EDIT_STEP,      FSM_EVT_CLICK_TIME,  FSM_STATE_EDIT_TIME,     FSM_ACTION_EDIT_TIME          },
+  { FSM_STATE_EDIT_TIME,      FSM_EVT_ENCODER,     FSM_STATE_EDIT_TIME,     FSM_ACTION_UPDATE_EDIT_TIME   },
+  { FSM_STATE_EDIT_TIME,      FSM_EVT_CLICK,       FSM_STATE_EDIT_STEP,     FSM_ACTION_EDIT_SET_TIME      },
+  { FSM_STATE_EDIT_STEP,      FSM_EVT_CLICK_TEMP,  FSM_STATE_EDIT_TEMP,     FSM_ACTION_EDIT_TEMP          },
+  { FSM_STATE_EDIT_TEMP,      FSM_EVT_ENCODER,     FSM_STATE_EDIT_TEMP,     FSM_ACTION_UPDATE_EDIT_TEMP   },
+  { FSM_STATE_EDIT_TEMP,      FSM_EVT_CLICK,       FSM_STATE_EDIT_STEP,     FSM_ACTION_EDIT_SET_TEMP      },
+  { FSM_STATE_EDIT_STEP,      FSM_EVT_CLICK_SMOKE, FSM_STATE_EDIT_SMOKE,    FSM_ACTION_EDIT_SMOKE         },
+  { FSM_STATE_EDIT_SMOKE,     FSM_EVT_ENCODER,     FSM_STATE_EDIT_SMOKE,    FSM_ACTION_UPDATE_EDIT_SMOKE  },
+  { FSM_STATE_EDIT_SMOKE,     FSM_EVT_CLICK,       FSM_STATE_EDIT_STEP,     FSM_ACTION_EDIT_SET_SMOKE     },
+};
+
+static fsm_state_t   _state;
+static fsm_actions_t _actions;
+
+void fsm_init(fsm_actions_t const *actions) {
+  _actions = *actions;
+  _state = FSM_STATE_START_MENU;
+}
+
+void fsm_event(fsm_event_t event) {
+  for (int i = 0; i < sizeof(transitions) / sizeof(transition_t); i++) {
+    if (transitions[i].from_state == _state && transitions[i].event == event) {
+      _state = transitions[i].to_state;
+      ((fsm_action_t *)(&_actions))[transitions[i].action]();
+      return;
+    }
+  }
+  _actions.no_action(_state, event);
+}
+
+fsm_state_t fsm_get_state(void) {
+  return _state;
+}
